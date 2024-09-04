@@ -1,12 +1,12 @@
 #include <SPI.h>
 #include <EEPROM.h>               
 #include <Wire.h>                 
-#include <Rotary.h>               //https://github.com/brianlow/Rotary
-#include <si5351.h>               //https://github.com/etherkit/Si5351Arduino
-#include <Adafruit_GFX.h>         //https://github.com/adafruit/Adafruit-GFX-Library
+#include <Rotary.h>          //https://github.com/brianlow/Rotary
+#include <si5351.h>          //https://github.com/etherkit/Si5351Arduino
+#include <Adafruit_GFX.h>    //https://github.com/adafruit/Adafruit-GFX-Library
 #include <Adafruit_SH110X.h>
 
-#define IF         2000000      //el valor de la frecuencia del filtro a cristal
+#define IF         2000000   //el valor de la frecuencia del filtro a cristal
 #define tunestep   4         //Este pin es el pulsador central del rotary, se usa para cambiar el paso
 #define band80     9         //Este pin se usa para que el micro sepa que se selecciono la banda de 40
 #define band40     11        //Este pin se usa para que el micro sepa que se selecciono la banda de 30
@@ -19,12 +19,13 @@
 Rotary r = Rotary(2, 3);     //definicion del rotary switch en los pines 2 y 3
 
 Adafruit_SH1106G display = Adafruit_SH1106G(128, 64, &Wire, -1);
-Si5351 si5351(0x60);                                             //definicion y direccion i2c del Si5351 en 0x60
+Si5351 si5351(0x60);         //definicion y direccion i2c del Si5351 en 0x60
 
-unsigned long freq=100000, freqmem, freqbanda=5000000, freqlcd, freqout, freqold=0, fstep;
-unsigned long ultimoTiempoGuardado = 0;
-const unsigned long intervaloGuardado = 30000;
-long cal = 120000;
+unsigned long tiempoActual=millis();
+unsigned long ultimoTiempoGuardado=millis();
+unsigned long freq=1100000, freqmem, freqbase80=2600000, freqbase40=6000000, freqbase20=13100000, freqlcd, freqout, freqold=0, fstep;
+const unsigned long intervaloGuardado = 30000;    //tiempo de guardado en mSeg
+long cal = 120000;          //variable de calibracion del clock interno del si5351
 unsigned int smvalTX;
 unsigned int smvalRX;
 byte encoder = 1;
@@ -33,8 +34,7 @@ byte n = 1;
 byte y, x;
 bool modo = 0;
 bool save = 1;
-int banda=0;                 //banda 1=40m, 2=30m, 3=20m
-int count=0;
+int banda=0;                 //banda 1=80m, 2=40m, 3=20m
 float volt=0;
 ISR(PCINT2_vect) 
   {
@@ -48,7 +48,7 @@ void set_frequency(short dir)
   if (encoder == 1) 
     {                         
     if (dir == 1) 
-    {freq = freq + fstep; if (freq>=1100000) freq=1100000;}
+    {freq = freq + fstep; if (freq>=2100000) freq=2100000;}
     if (dir == -1) 
     {freq = freq - fstep; if (freq<=100000) freq=100000;}
     }
@@ -56,11 +56,10 @@ void set_frequency(short dir)
 
 void setup() 
   {
-  delay(200); // 
+  delay(200);  
   Wire.begin();
-
-  delay(250); // espera a que el OLED encienda
-  display.begin(0x3C, true); // direccion 0x3C por default
+  delay(250);                          // espera a que el OLED encienda
+  display.begin(0x3C, true);           // direccion 0x3C por default
   display.setTextColor(SH110X_WHITE);
   display.clearDisplay();
   display.display();
@@ -82,78 +81,54 @@ void setup()
   PCICR |= (1 << PCIE2);
   PCMSK2 |= (1 << PCINT18) | (1 << PCINT19);
   sei();
-  setstep();
   EEPROM.get(0,freq);
   freqold = freq;
-  if (digitalRead(band80) == HIGH && banda!=1) {freqbanda= 3100000;banda=1;modo=1;}
-  if (digitalRead(band40) == HIGH && banda!=2) {freqbanda= 6400000;banda=2;modo=1;}
-  if (digitalRead(band20) == HIGH && banda!=3) {freqbanda=13400000;banda=3;modo=0;}
-  tunegen();  
+  if (digitalRead(band80) == HIGH && banda!=1) {delay(300);freqbanda=freqbase80;banda=1;modo=1;tunegen();}
+  if (digitalRead(band40) == HIGH && banda!=2) {delay(300);freqbanda=freqbase40;banda=2;modo=1;tunegen();}
+  if (digitalRead(band40) == HIGH && banda!=3) {delay(300);freqbanda=freqbase20;banda=3;modo=0;tunegen();}
+  setstep();
   }
 
 void loop() 
   {
-  unsigned long tiempoActual=millis();
+  tiempoActual=millis();
   EEPROM.get(0,freqmem);
   if (freq != freqmem && tiempoActual-ultimoTiempoGuardado >= intervaloGuardado)
-  {
+    {
     EEPROM.put(0,freq);
     ultimoTiempoGuardado=tiempoActual;
     save=1;
-    count++;
-  }
+    }
   if (freqold != freq) 
     {
     save=0;
     tunegen();
     freqold = freq;
-    
     }
   if (digitalRead(tunestep) == LOW) 
     {
     delay(500);
-    if (digitalRead(tunestep) == LOW) 
-      {
-      modo = !modo;
-      tunegen();
-      }
-    else 
-      setstep();
-      
+    if (digitalRead(tunestep) == LOW) {modo=!modo;tunegen();} else setstep();
     displayfreq();
     delay(500);
     }
 
-  if (digitalRead(band80) == HIGH && banda!=1) 
-    {
-    banda=1;
-    freqbanda=3100000;
-    delay(300);
-    modo=1;
-    tunegen();
-    }
-  if (digitalRead(band40) == HIGH && banda!=2) 
-    {
-    banda=2;
-    freqbanda=6400000;
-    delay(300);
-    modo=1;
-    tunegen();
-    }
-  if (digitalRead(band20) == HIGH && banda!=3) 
-    {
-    banda=3;
-    freqbanda=13400000;
-    delay(300);
-    modo=0;
-    tunegen();
-    }
+  if (digitalRead(band80) == HIGH && banda!=1) {delay(300);freqbanda=freqbase80;banda=1;modo=1;tunegen();}
+  if (digitalRead(band40) == HIGH && banda!=2) {delay(300);freqbanda=freqbase40;banda=2;modo=1;tunegen();}
+  if (digitalRead(band40) == HIGH && banda!=3) {delay(300);freqbanda=freqbase20;banda=3;modo=0;tunegen();}
+  
   displayfreq();
   sgnalread();
   }
 
 void tunegen() 
   {
+  switch(banda)
+    {
+    case 1:  freqbanda=freqbase80; break;
+    case 2:  freqbanda=freqbase40; break;
+    case 3:  freqbanda=freqbase20; break;
+    }  
   if(modo)  freqout= freqbanda + freq - IF ; 
   else      freqout= freqbanda + freq + IF ;
   si5351.set_freq(freqout * 100ULL, SI5351_CLK2); 
