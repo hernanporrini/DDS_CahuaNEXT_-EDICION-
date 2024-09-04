@@ -186,7 +186,7 @@ void displayfreq()
   if (stp == 4) {display.print(" 10kHz");display.drawTriangle( 53, 39,  63, 39,  58, 37, SH110X_WHITE);} 
   if (stp == 3) {display.print("  1kHz");display.drawTriangle( 65, 39,  75, 39,  70, 37, SH110X_WHITE);} 
   if (stp == 2) {display.print("100 Hz");display.drawTriangle( 89, 39,  99, 39,  94, 37, SH110X_WHITE);}
-  if (stp == 1) {display.print(" 10 Hz");display.drawTriangle(101, 39, 111, 39, 106, 37, SH110X_WHITE);}
+  if (stp == 1) {display.print("  5 Hz");display.drawTriangle(101, 39, 111, 39, 106, 37, SH110X_WHITE);}
   display.setCursor(51,12);
   display.print("VFO A");
 
@@ -215,7 +215,7 @@ void setstep()
     case 2: stp = 3; fstep = 1000; break;
     case 3: stp = 4; fstep = 10000; break;
     case 4: stp = 5; fstep = 100000; break;
-    case 5: stp = 1; fstep = 10; break;
+    case 5: stp = 1; fstep = 5; break;
     }
   }
 
@@ -225,47 +225,26 @@ void sgnalread()
   if(digitalRead(pinTRX)==HIGH)
     {
     smvalRX = analogRead(meterRX); 
-    x = map(smvalRX, 0, 724, 1, 12); 
-    if (x > 12) x = 12;
-    switch (x) 
-      {
-      case 12: display.fillRect(112, 46, 7, 7 , SH110X_WHITE);
-      case 11: display.fillRect(103, 46, 7, 7 , SH110X_WHITE);
-      case 10: display.fillRect( 94, 46, 7, 7 , SH110X_WHITE);
-      case 9:  display.fillRect( 85, 46, 7, 7 , SH110X_WHITE);
-      case 8:  display.fillRect( 76, 47, 7, 7 , SH110X_WHITE);
-      case 7:  display.fillRect( 67, 47, 7, 7 , SH110X_WHITE);
-      case 6:  display.fillRect( 58, 47, 7, 7 , SH110X_WHITE);
-      case 5:  display.fillRect( 49, 47, 7, 7 , SH110X_WHITE);
-      case 4:  display.fillRect( 40, 47, 7, 7 , SH110X_WHITE);
-      case 3:  display.fillRect( 31, 47, 7, 7 , SH110X_WHITE);
-      case 2:  display.fillRect( 22, 47, 7, 7 , SH110X_WHITE);
-      case 1:  display.fillRect( 13, 47, 7, 7 , SH110X_WHITE);
-      display.display();
-      }
+    if (smvalRX<   2) display.fillRect( 31, 47, 7, 7 , SH110X_WHITE); //señal de recepcion en el S-Meter S3    (-109dBm)
+    if (smvalRX>   1) display.fillRect( 40, 47, 7, 7 , SH110X_WHITE); //señal de recepcion en el S-Meter S4    (-103dBm)
+    if (smvalRX>   4) display.fillRect( 49, 47, 7, 7 , SH110X_WHITE); //señal de recepcion en el S-Meter S5    ( -97dBm)
+    if (smvalRX>  10) display.fillRect( 58, 47, 7, 7 , SH110X_WHITE); //señal de recepcion en el S-Meter S6    ( -91dBm)
+    if (smvalRX>  23) display.fillRect( 67, 47, 7, 7 , SH110X_WHITE); //señal de recepcion en el S-Meter S7    ( -85dBm)
+    if (smvalRX>  49) display.fillRect( 76, 47, 7, 7 , SH110X_WHITE); //señal de recepcion en el S-Meter S8    ( -79dBm)
+    if (smvalRX> 100) display.fillRect( 85, 47, 7, 7 , SH110X_WHITE); //señal de recepcion en el S-Meter S9    ( -73dBm)
+    if (smvalRX> 325) display.fillRect( 94, 47, 7, 7 , SH110X_WHITE); //señal de recepcion en el S-Meter S9+10 ( -63dBm)
+    if (smvalRX>1022) display.fillRect(103, 47, 7, 7 , SH110X_WHITE); //señal de recepcion en el S-Meter S9+20 ( -53dBm)
+    display.display();
     }
-   else
+  else
     {
     smvalTX = analogRead(meterTX); 
-    y = map(smvalTX, 256, 352, 1, 12); 
-    
-    if (y > 12) y = 12;
-    switch (y) 
-      {
-      case 12: display.fillRect(112, 47, 7, 7 , SH110X_WHITE);
-      case 11: display.fillRect(103, 47, 7, 7 , SH110X_WHITE);
-      case 10: display.fillRect( 94, 47, 7, 7 , SH110X_WHITE);
-      case 9:  display.fillRect( 85, 47, 7, 7 , SH110X_WHITE);
-      case 8:  display.fillRect( 76, 47, 7, 7 , SH110X_WHITE);
-      case 7:  display.fillRect( 67, 47, 7, 7 , SH110X_WHITE);
-      case 6:  display.fillRect( 58, 47, 7, 7 , SH110X_WHITE);
-      case 5:  display.fillRect( 49, 47, 7, 7 , SH110X_WHITE);
-      case 4:  display.fillRect( 40, 47, 7, 7 , SH110X_WHITE);
-      case 3:  display.fillRect( 31, 47, 7, 7 , SH110X_WHITE);
-      case 2:  display.fillRect( 22, 47, 7, 7 , SH110X_WHITE);
-      case 1:  display.fillRect( 13, 47, 7, 7 , SH110X_WHITE);
-      display.display();
-      }
+    if (smvalTX< 204) display.fillRect( 31, 47, 16, 7 , SH110X_WHITE); //señal de transmision en el S-Meter 20%
+    if (smvalTX> 409) display.fillRect( 49, 47, 16, 7 , SH110X_WHITE); //señal de transmision en el S-Meter 40%
+    if (smvalTX> 613) display.fillRect( 67, 47, 16, 7 , SH110X_WHITE); //señal de transmision en el S-Meter 60%
+    if (smvalTX> 818) display.fillRect( 85, 47, 16, 7 , SH110X_WHITE); //señal de transmision en el S-Meter 80%
+    if (smvalTX>1022) display.fillRect(103, 47, 16, 7 , SH110X_WHITE); //señal de transmision en el S-Meter 100%
+    display.display();
     }
   }
 
